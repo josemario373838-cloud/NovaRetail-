@@ -43,9 +43,11 @@ router.get(
       const baseParams =
         canal === "todos" ? [fecha_i, fecha_f] : [fecha_i, fecha_f, canal];
 
-      // Ventas totales
+      // Ventas totales, productos distintos y transacciones
       const ventasQ = await db.query(
-        `SELECT COALESCE(SUM(v.precio_unitario * v.cantidad), 0) AS total
+        `SELECT COALESCE(SUM(v.precio_unitario * v.cantidad), 0) AS total,
+                COUNT(DISTINCT v.cod_producto) AS productos_distintos,
+                COUNT(*) AS transacciones
          FROM ventas v
          WHERE v.fecha BETWEEN $1 AND $2
            AND ${canalFilter}`,
@@ -121,6 +123,8 @@ router.get(
 
       return res.status(200).json({
         ventas_totales: parseFloat(ventasQ.rows[0].total),
+        productos_distintos: parseInt(ventasQ.rows[0].productos_distintos),
+        transacciones: parseInt(ventasQ.rows[0].transacciones),
         comparativa_canales: comparativaCanales,
         top_productos: topQ.rows.map((r) => ({
           cod_producto: r.cod_producto,

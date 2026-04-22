@@ -47,6 +47,9 @@ router.get(
         baseParams
       );
 
+      // LOG DEBUG: ventasQ
+      console.log('[DEBUG ventasQ.rows[0]]', ventasQ.rows[0]);
+
       // Comparativa canales
       const canalesQ = await db.query(
         `SELECT v.canal,
