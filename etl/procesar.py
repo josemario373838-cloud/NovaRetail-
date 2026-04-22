@@ -322,9 +322,18 @@ def procesar(file_path: str, tipo: str, importacion_id: str) -> dict:
         rechazados = len(all_errors)
         validos_esperados = total_after_dedup - rechazados
 
+
         # 6. Cargar a BD
         engine = _get_engine()
         validos = load_to_db(df, tipo, importacion_id, engine)
+
+        # Ejecutar funciones de alertas si es inventario
+        if tipo == "inventario":
+            with engine.begin() as conn:
+                conn.execute(text("SELECT fn_generar_alertas_stock()"))
+                logger.info("fn_generar_alertas_stock ejecutada tras importación de inventario")
+                conn.execute(text("SELECT fn_generar_alertas_discrepancia()"))
+                logger.info("fn_generar_alertas_discrepancia ejecutada tras importación de inventario")
 
         # 7. Escribir log de errores
         url_log = write_error_log(all_errors, importacion_id)
