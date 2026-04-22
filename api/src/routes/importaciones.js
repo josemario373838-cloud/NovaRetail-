@@ -96,9 +96,9 @@ router.post(
       // Calcular hash MD5
       const hash = crypto.createHash("md5").update(fileBuffer).digest("hex");
 
-      // Detectar importación duplicada
+      // Detectar importación duplicada SOLO si fue EXITOSO o PARCIAL
       const dupCheck = await db.query(
-        "SELECT id FROM importaciones WHERE archivo_hash = $1",
+        "SELECT id, estado FROM importaciones WHERE archivo_hash = $1 AND estado IN ('EXITOSO', 'PARCIAL')",
         [hash]
       );
       if (dupCheck.rows.length > 0) {
