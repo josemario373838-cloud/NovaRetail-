@@ -113,9 +113,18 @@ router.post(
       tmpPath = path.join(os.tmpdir(), `${uuidv4()}${ext}`);
       fs.writeFileSync(tmpPath, fileBuffer);
 
+
       const importacionId = uuidv4();
       const pythonBin = getPythonBin();
       const etlScript = path.resolve(__dirname, "../../../etl/procesar.py");
+
+      // Crear registro en importaciones ANTES de ejecutar el ETL
+      await db.query(
+        `INSERT INTO importaciones
+           (id, tipo, estado, total_registros, registros_validos, registros_rechazados, archivo_hash, created_by)
+         VALUES ($1, $2, $3, 0, 0, 0, $4, $5)`,
+        [importacionId, tipo, 'EN_PROCESO', hash, req.user.id]
+      );
 
       // Invocar ETL Service
       const etlResult = spawnSync(pythonBin, [etlScript, tmpPath, tipo, importacionId], {
@@ -126,10 +135,8 @@ router.post(
       // ETL no disponible
       if (etlResult.status === null || etlResult.error) {
         await db.query(
-          `INSERT INTO importaciones
-             (id, tipo, estado, total_registros, registros_validos, registros_rechazados, archivo_hash, created_by)
-           VALUES ($1,$2,'FALLIDO',0,0,0,$3,$4)`,
-          [importacionId, tipo, hash, req.user.id]
+          `UPDATE importaciones SET estado = 'FALLIDO' WHERE id = $1`,
+          [importacionId]
         );
         return res.status(503).json({
           error: "ETL Service no disponible",
@@ -142,42 +149,49 @@ router.post(
       try {
         resultado = JSON.parse(etlResult.stdout.toString());
       } catch {
+        await db.query(
+          `UPDATE importaciones SET estado = 'FALLIDO' WHERE id = $1`,
+          [importacionId]
+        );
         return res.status(500).json({ error: "Respuesta inválida del ETL Service" });
       }
 
       // El ETL detectó error de validación (columnas faltantes, archivo vacío, etc.)
       if (resultado.errores && resultado.errores.length > 0 && resultado.estado === "FALLIDO") {
+        await db.query(
+          `UPDATE importaciones SET estado = 'FALLIDO' WHERE id = $1`,
+          [importacionId]
+        );
         return res.status(400).json({ error: resultado.errores[0] });
       }
 
-      // Registrar importación en BD
-      const { rows } = await db.query(
-        `INSERT INTO importaciones
-           (id, tipo, estado, total_registros, registros_validos, registros_rechazados,
-            archivo_hash, url_log_errores, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         RETURNING id`,
+      // Actualizar importación en BD con los resultados
+      await db.query(
+        `UPDATE importaciones SET
+           estado = $2,
+           total_registros = $3,
+           registros_validos = $4,
+           registros_rechazados = $5,
+           url_log_errores = $6
+         WHERE id = $1`,
         [
           importacionId,
-          tipo,
           resultado.estado,
           resultado.total,
           resultado.validos,
           resultado.rechazados,
-          hash,
-          resultado.url_log_errores || null,
-          req.user.id,
+          resultado.url_log_errores || null
         ]
       );
 
       return res.status(200).json({
-        importacion_id: rows[0].id,
+        importacion_id: importacionId,
         estado: resultado.estado,
         total_registros: resultado.total,
         registros_validos: resultado.validos,
         registros_rechazados: resultado.rechazados,
         url_log_errores: resultado.url_log_errores
-          ? `/api/v1/importaciones/${rows[0].id}/log-errores`
+          ? `/api/v1/importaciones/${importacionId}/log-errores`
           : null,
       });
     } catch (err) {
