@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (contienen credenciales sensibles)
+.env
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Uploads temporales
+uploads/
+tmp/
+
+# Coverage
+coverage/

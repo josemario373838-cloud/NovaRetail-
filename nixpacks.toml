@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = [
+  "cd api && npm install",
+  "pip install -r etl/requirements.txt"
+]
+
+[start]
+cmd = "node api/src/app.js"

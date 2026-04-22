@@ -1,0 +1,19 @@
+# Node
+api/node_modules/
+api/.env
+
+# Python
+etl/venv/
+etl/__pycache__/
+etl/*.pyc
+etl/.env
+
+# Frontend no va al backend repo
+frontend/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
