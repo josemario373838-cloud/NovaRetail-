@@ -1,14 +1,22 @@
+
 require("dotenv").config();
 const express = require("express");
+const cors = require("cors");
 const importacionesRouter = require("./routes/importaciones");
 const dashboardRouter    = require("./routes/dashboard");
 const alertasRouter      = require("./routes/alertas");
 const authRouter         = require("./routes/auth");
 const usuariosRouter     = require("./routes/usuarios");
-const reportesRouter     = require("./routes/reportes");
+const reportesRouter   = require("./routes/reportes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Habilitar CORS para todas las rutas
+app.use(cors({
+  origin: "*", // Puedes restringir a tu dominio frontend si lo deseas
+  credentials: true
+}));
 
 app.use(express.json());
 app.use("/api/v1", importacionesRouter);
